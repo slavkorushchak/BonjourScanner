@@ -1,4 +1,4 @@
-DetectBonjourServices
+Bonjour Scanner
 =====================
 
 GL test task
