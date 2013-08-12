@@ -9,36 +9,31 @@
 #import "BSViewController.h"
 #include <arpa/inet.h>
 
-@interface NSNetService (BSViewControllerAdditions)
-- (NSComparisonResult) localizedCaseInsensitiveCompareByName:(NSNetService*)aService;
-@end
-
-@implementation NSNetService (BSViewControllerAdditions)
-- (NSComparisonResult) localizedCaseInsensitiveCompareByName:(NSNetService*)aService {
-	return [[self name] localizedCaseInsensitiveCompare:[aService name]];
-}
-@end
 
 @interface BSViewController() <UITableViewDataSource, UITableViewDelegate>
 {
     NSString* searchingForServicesString;
-    NSMutableArray* services;
+    
+    NSMutableDictionary* services;
+    
+    NSMutableArray* protocolsArray;
 }
 
 @property (nonatomic, strong) UITableView* tableView;
 
 @property (nonatomic, strong) NSNetServiceBrowser* netServiceBrowser;
+@property (nonatomic, strong) NSNetServiceBrowser* netServiceBrowserSpecific;
 @property (nonatomic, strong) NSNetService* currentResolve;
 
 @end
 
 @implementation BSViewController
-
+#pragma mark - Initialization
 - (id) initWithNibName:(NSString *)nibNameOrNil bundle:(NSBundle *)nibBundleOrNil
 {
     if ((self = [super initWithNibName:nibNameOrNil bundle:nibBundleOrNil])) {
 		self.title = @"Bonjour Scanner";
-        services = [[NSMutableArray alloc] init];
+        services = [[NSMutableDictionary alloc] init];
         searchingForServicesString = @"Searching ...";
 	}
     
@@ -54,31 +49,39 @@
     [self.view addSubview:self.tableView];
 }
 
+- (void) initRefreshButton
+{
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"Refresh" style:UIBarButtonItemStyleBordered
+                                                                                                  target:self action:@selector(refreshServicesList)];
+}
+
 - (void) viewDidLoad
 {
     [super viewDidLoad];
     [self initTableView];
+    [self initRefreshButton];
 }
 
 - (void) viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    [self myRegistrationFunction:1934];
     [self refreshServicesList];
 }
 
+#pragma mark - Search Bonjour services
 - (void) refreshServicesList
 {
-    BOOL canBeSearched = [self searchForServicesOfType:nil inDomain:nil];
+    BOOL canBeSearched = [self searchForAllServices];
     if (!canBeSearched) {
         NSLog(@"ERROR! can not init NSNetServiceBrowser");
     }
 }
 
-- (BOOL)searchForServicesOfType:(NSString *)type inDomain:(NSString *)domain {
-	
+- (BOOL)searchForAllServices
+{	
 	[self stopCurrentResolve];
 	[_netServiceBrowser stop];
+    [_netServiceBrowserSpecific stop];
 	[services removeAllObjects];
     
 	NSNetServiceBrowser *aNetServiceBrowser = [[NSNetServiceBrowser alloc] init];
@@ -87,26 +90,54 @@
 	}
     
 	aNetServiceBrowser.delegate = self;
-	self.netServiceBrowser = aNetServiceBrowser;
-	[self.netServiceBrowser searchForServicesOfType:@"_music._tcp" inDomain:@""];
-    //_services._dns-sd._udp.
+	self.netServiceBrowser = aNetServiceBrowser;    
+    [self.netServiceBrowser searchForServicesOfType:@"_services._dns-sd._udp." inDomain:@""];
     
 	[self.tableView reloadData];
 	return YES;
 }
 
+- (void) searchForSpecificType:(NSString*)type
+{
+    [self stopCurrentResolve];
+    [_netServiceBrowser stop];
+    [_netServiceBrowserSpecific stop];
+    
+	NSNetServiceBrowser *aNetServiceBrowser = [[NSNetServiceBrowser alloc] init];
+	if(!aNetServiceBrowser) {
+		return;
+	}
+    
+    aNetServiceBrowser.delegate = self;
+	self.netServiceBrowserSpecific = aNetServiceBrowser;
+
+	[aNetServiceBrowser searchForServicesOfType:type inDomain:@""];
+}
+
+- (void)stopCurrentResolve
+{
+	[self.currentResolve stop];
+	self.currentResolve = nil;
+}
+
 #pragma mark - UITableView delegate/datasource
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-	return 1;
+	return [[services allKeys] count] > 0 ? [[services allKeys] count] : 1;
+}
+
+- (NSString*)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
+{
+    return [[services allKeys] count] > 0 ? [[services allKeys] objectAtIndex:section] : nil;
 }
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-	NSUInteger count = [services count];
-	if (count == 0 && searchingForServicesString) {
-		return 1;
+    if ([services count] == 0) {
+        return 1;
     }
+    NSString* currentKey = [[services allKeys] objectAtIndex:section];
+	NSUInteger count = [[services objectForKey:currentKey] count];
     
 	return count;
 }
@@ -120,14 +151,15 @@
                                       reuseIdentifier:cellId];
 	}
 	
-	NSUInteger count = [services count];
+	NSUInteger count = [[services allValues] count];
 	if (count == 0 && searchingForServicesString) {
         cell.textLabel.text = searchingForServicesString;
 		cell.textLabel.textColor = [UIColor colorWithWhite:0.5 alpha:0.5];
 		return cell;
 	}
 	
-	NSNetService* service = [services objectAtIndex:indexPath.row];
+    NSString* currentKey = [[services allKeys] objectAtIndex:indexPath.section];
+	NSNetService* service = [[services objectForKey:currentKey] objectAtIndex:indexPath.row];
 	cell.textLabel.text = [service name];
     cell.textLabel.textColor = [UIColor blackColor];
     cell.detailTextLabel.text = [NSString stringWithFormat:@"type : %@  /  domain : %@",
@@ -142,22 +174,11 @@
 		[self stopCurrentResolve];
     }
 	
-	self.currentResolve = [services objectAtIndex:indexPath.row];
-	[self.currentResolve setDelegate:self];
-
+    NSString* currentKey = [[services allKeys] objectAtIndex:indexPath.section];
+	self.currentResolve = [[services objectForKey:currentKey] objectAtIndex:indexPath.row];
+	
+    [self.currentResolve setDelegate:self];
 	[self.currentResolve resolveWithTimeout:0.0];
-}
-
-- (void)sortAndUpdateUI
-{
-	[services sortUsingSelector:@selector(localizedCaseInsensitiveCompareByName:)];
-	[self.tableView reloadData];
-}
-
-- (void)stopCurrentResolve
-{    
-	[self.currentResolve stop];
-	self.currentResolve = nil;
 }
 
 #pragma mark - NSNetServiceBrovser delegate
@@ -168,20 +189,54 @@
 		[self stopCurrentResolve];
 	}
     
-	//[services removeObject:service];
+	[[services objectForKey:service.type] removeObject:service];
 	
 	if (!moreComing) {
-		[self sortAndUpdateUI];
+		[self.tableView reloadData];
 	}
 }
 
 - (void)netServiceBrowser:(NSNetServiceBrowser*)netServiceBrowser
            didFindService:(NSNetService*)service moreComing:(BOOL)moreComing
 {    
-	[services addObject:service];
+	if (netServiceBrowser == self.netServiceBrowser) {
+        NSString* name = service.name;
+        NSArray* components = [service.type componentsSeparatedByString:@"."];
+        NSString* protocol = nil;
+        if ([components count] > 0) {
+            protocol = (NSString*)[components objectAtIndex:0];
+        }
+        
+        if (protocol && name) {
+            if (!protocolsArray) {
+                protocolsArray = [[NSMutableArray alloc] init];
+            }
+            [protocolsArray addObject:[NSString stringWithFormat:@"%@.%@.", name, protocol]]; 
+        }
+        
+        if (!moreComing) {
+            [self searchForSpecificType:protocolsArray[0]];
+            [protocolsArray removeObjectAtIndex:0];
+        }
+        
+        return;
+    }
     
+    if ([services objectForKey:service.type]) {
+        [[services objectForKey:service.type] addObject:service];
+    } else {
+        NSMutableArray* sortedByType = [[NSMutableArray alloc] init];
+        [sortedByType addObject:service];
+        [services setObject:sortedByType forKey:service.type];
+    }
+
 	if (!moreComing) {
-		[self sortAndUpdateUI];
+		[self.tableView reloadData];
+        
+        if ([protocolsArray count] > 0) {
+            [self searchForSpecificType:protocolsArray[0]];
+            [protocolsArray removeObjectAtIndex:0];
+        }
 	}
 }
 
@@ -196,50 +251,22 @@
 }
 
 - (void)netServiceDidResolveAddress:(NSNetService *)service
-{
-	// was never called for me
-    
+{    
     assert(service == self.currentResolve);
 	[self stopCurrentResolve];
     
     [self didResolveInstanceForService:service];
 }
 
-- (void)netService:(NSNetService *)sender didNotPublish:(NSDictionary *)errorDict
+#pragma mark - Parse resolve response
+- (NSString *)getStringFromAddressData:(NSData *)dataIn
 {
-    
-}
-
-- (void)netServiceWillPublish:(NSNetService *)sender
-{
-    
-}
-
-
-- (void) myRegistrationFunction:(NSUInteger) port
-{
-    NSNetService *service;
-    
-    service = [[NSNetService alloc] initWithDomain:@""// 1
-                                              type:@"_music._tcp"
-                                              name:@""
-                                              port:port];
-    if(service) {
-        [service setDelegate:self];
-        [service publish];
-    } else {
-        NSLog(@"ERROR! Can not init the NSNetService object.");
-    }
-}
-
-#pragma mark - parse resolve response 
-- (NSString *)getStringFromAddressData:(NSData *)dataIn {
-    struct sockaddr_in  *socketAddress = nil;
-    NSString            *ipString = nil;
+    struct sockaddr_in *socketAddress = nil;
+    NSString *ipString = nil;
     
     socketAddress = (struct sockaddr_in *)[dataIn bytes];
     ipString = [NSString stringWithFormat: @"%s",
-                inet_ntoa(socketAddress->sin_addr)];  ///problem here
+                inet_ntoa(socketAddress->sin_addr)];
     return ipString;
 }
 
