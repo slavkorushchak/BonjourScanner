@@ -280,6 +280,7 @@
 		CC95497417B62F110099B90F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 97JP3Z28TY;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "BonjourScanner/BonjourScanner-Prefix.pch";
@@ -293,6 +294,7 @@
 		CC95497517B62F110099B90F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 97JP3Z28TY;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "BonjourScanner/BonjourScanner-Prefix.pch";
