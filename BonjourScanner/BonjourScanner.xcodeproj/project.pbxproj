@@ -139,6 +139,11 @@
 				CLASSPREFIX = BS;
 				LastUpgradeCheck = 0460;
 				ORGANIZATIONNAME = "Slavko Rushchak";
+				TargetAttributes = {
+					CC95494C17B62F110099B90F = {
+						DevelopmentTeam = 97JP3Z28TY;
+					};
+				};
 			};
 			buildConfigurationList = CC95494817B62F110099B90F /* Build configuration list for PBXProject "BonjourScanner" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -275,10 +280,11 @@
 		CC95497417B62F110099B90F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = 97JP3Z28TY;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "BonjourScanner/BonjourScanner-Prefix.pch";
 				INFOPLIST_FILE = "BonjourScanner/BonjourScanner-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -287,10 +293,11 @@
 		CC95497517B62F110099B90F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEVELOPMENT_TEAM = 97JP3Z28TY;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "BonjourScanner/BonjourScanner-Prefix.pch";
 				INFOPLIST_FILE = "BonjourScanner/BonjourScanner-Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 5.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				WRAPPER_EXTENSION = app;
 			};
@@ -315,6 +322,7 @@
 				CC95497517B62F110099B90F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
